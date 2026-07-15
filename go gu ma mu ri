@@ -1,0 +1,175 @@
+import pygame
+import random
+
+# -----------------------
+# 초기 설정
+# -----------------------
+pygame.init()
+
+WIDTH, HEIGHT = 600, 800
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("💩 똥 피하기 게임")
+
+player_img = pygame.image.load("MUSHROOMNURI.png")
+player_img = pygame.transform.scale(player_img, (50, 50))
+
+player1_img = pygame.image.load("NESALGANGAGE.png")
+player1_img = pygame.transform.scale(player1_img, (100, 50))
+
+clock = pygame.time.Clock()
+
+# 색상
+WHITE = (255, 255, 255)
+BLUE = (50, 100, 255)
+BROWN = (120, 70, 20)
+BLACK = (0, 0, 0)
+
+font = pygame.font.SysFont(None, 40)
+
+# 플레이어 및 똥 설정 상수
+player_width = 60
+player_height = 20
+player_y = HEIGHT - 50
+player_speed = 8
+poop_size = 40
+START_POOPS = 10
+
+# -----------------------
+# 게임 초기화 함수
+# -----------------------
+def reset_game():
+    global player_x, poops, score, last_level
+    
+    player_x = WIDTH // 2 - player_width // 2
+    score = 0
+    last_level = 0
+    poops = []
+
+    for i in range(START_POOPS):
+        poops.append({
+            "x": random.randint(0, WIDTH - poop_size),
+            "y": random.randint(-1000, -40),
+            "speed": random.randint(5, 10)
+        })
+
+# =======================
+# 전체 프로그램 루프
+# =======================
+app_running = True
+
+while app_running:
+    reset_game()  # 게임 데이터 초기화
+    running = True
+
+    # -----------------------
+    # 메인 게임 루프
+    # -----------------------
+    while running:
+        clock.tick(60)
+
+        # 이벤트 처리
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                app_running = False
+
+        # 키 입력
+        keys = pygame.key.get_pressed()
+
+        if keys[pygame.K_LEFT]:
+            player_x -= player_speed
+        if keys[pygame.K_RIGHT]:
+            player_x += player_speed
+
+        # 화면 밖 못 나감
+        player_x = max(0, min(player_x, WIDTH - player_width))
+
+        player_rect = pygame.Rect(
+            player_x,
+            player_y,
+            player_width,
+            player_height
+        )
+
+        # 똥 움직이기 및 충돌 처리
+        for poop in poops:
+            poop["y"] += poop["speed"]
+
+            if poop["y"] > HEIGHT:
+                poop["y"] = random.randint(-500, -40)
+                poop["x"] = random.randint(0, WIDTH - poop_size)
+                poop["speed"] = random.randint(5, 12)
+                score += 1
+
+            poop_rect = pygame.Rect(
+                poop["x"],
+                poop["y"],
+                poop_size,
+                poop_size
+            )
+
+            # 충돌 검사
+            if player_rect.colliderect(poop_rect):
+                running = False  # 메인 루프 탈출 -> 게임 오버 루프로 이동
+
+        # 난이도 증가
+        level = score // 10
+        if level > last_level and len(poops) < 30:
+            poops.append({
+                "x": random.randint(0, WIDTH - poop_size),
+                "y": random.randint(-500, -40),
+                "speed": random.randint(6, 14)
+            })
+            last_level = level
+
+        # 화면 그리기
+        screen.fill(WHITE)
+        screen.blit(player1_img, (player_x, player_y))
+
+        for poop in poops:
+            screen.blit(player_img, (poop["x"], poop["y"]))
+
+        score_text = font.render(f"Score : {score}", True, BLACK)
+        poop_text = font.render(f"Poops : {len(poops)}", True, BLACK)
+
+        screen.blit(score_text, (10, 10))
+        screen.blit(poop_text, (10, 50))
+
+        pygame.display.update()
+
+    # 창을 닫아 종료된 상황이면 게임 오버 루프를 건너뜀
+    if not app_running:
+        break
+
+    # -----------------------
+    # 게임 오버 루프 (스페이스바 대기)
+    # -----------------------
+    waiting_for_key = True
+    while waiting_for_key:
+        clock.tick(60)
+
+        screen.fill(WHITE)
+
+        game_over = font.render("GAME OVER!", True, (255, 0, 0))
+        final_score = font.render(f"Final Score : {score}", True, BLACK)
+        restart_text = font.render("Press SPACE to Restart", True, BLUE)
+
+        screen.blit(game_over, (180, 300))
+        screen.blit(final_score, (170, 350))
+        screen.blit(restart_text, (130, 420))
+
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                waiting_for_key = False
+                app_running = False
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:  # 스페이스바 누르면 다시 시작
+                    waiting_for_key = False
+                elif event.key == pygame.K_ESCAPE:  # ESC 누르면 프로그램 종료
+                    waiting_for_key = False
+                    app_running = False
+
+pygame.quit()
